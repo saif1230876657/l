@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voice Search 3000</title>
+    
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- CSS Styles -->
+    <style>
+        /* ================== CSS ================== */
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #three-js-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Jarvis-like Visual Assistant Styling */
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid #00d9ff;
+            box-shadow: 0 0 15px #00d9ff, inset 0 0 15px #00d9ff;
+            animation: pulse 4s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .c1 { width: 100%; height: 100%; }
+        .c2 { width: 80%; height: 80%; animation-delay: 0.5s; }
+        .c3 { width: 60%; height: 60%; animation-delay: 1s; }
+
+        /* Listening Animation */
+        .listening .circle {
+            animation: listening-pulse 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.8; }
+        }
+
+        @keyframes listening-pulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 20px #00ffaa, inset 0 0 20px #00ffaa; border-color: #00ffaa;}
+            50% { transform: scale(1.05); box-shadow: 0 0 35px #00ffaa, inset 0 0 35px #00ffaa; border-color: #00ffaa;}
+            100% { transform: scale(0.9); box-shadow: 0 0 20px #00ffaa, inset 0 0 20px #00ffaa; border-color: #00ffaa;}
+        }
+
+        /* Glowing Card for Search Results */
+        .result-card {
+            background-color: rgba(0, 217, 255, 0.05);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 217, 255, 0.2);
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: rgba(0, 217, 255, 0.8);
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Three.js Background Container -->
+    <div id="three-js-container"></div>
+
+    <!-- Main Content -->
+    <div class="relative z-10 flex flex-col items-center justify-center min-h-screen p-4">
+        
+        <!-- Jarvis-like Visual Assistant -->
+        <div id="visual-assistant" class="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center cursor-pointer">
+            <div class="circle c1"></div>
+            <div class="circle c2"></div>
+            <div class="circle c3"></div>
+            <p id="status-text" class="absolute font-orbitron text-lg text-center">اضغط للتحدث</p>
+        </div>
+
+        <!-- Search Results Container -->
+        <div id="results-container" class="w-full max-w-4xl mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto" style="max-height: 50vh;">
+            <!-- Search results will be injected here -->
+        </div>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- JavaScript Logic -->
+    <script>
+        // ===================================================================================
+        // PART 1: THREE.JS BACKGROUND SETUP
+        // ===================================================================================
+
+        const container = document.getElementById('three-js-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const particleCount = 5000;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount * 3; i++) {
+            positions[i] = (Math.random() - 0.5) * 100;
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x00d9ff,
+            size: 0.05,
+            transparent: true,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        camera.position.z = 5;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            particleSystem.rotation.y += 0.0005;
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        // ===================================================================================
+        // PART 2: DOM ELEMENT REFERENCES
+        // ===================================================================================
+        const visualAssistant = document.getElementById('visual-assistant');
+        const statusText = document.getElementById('status-text');
+        const resultsContainer = document.getElementById('results-container');
+        let searchResults = []; // To store current search results
+
+        // ===================================================================================
+        // PART 3: SPEECH SYNTHESIS (TEXT-TO-SPEECH)
+        // ===================================================================================
+        function speak(text) {
+            speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ar-SA';
+            speechSynthesis.speak(utterance);
+        }
+
+        // ===================================================================================
+        // PART 4: WEB SPEECH API (SPEECH RECOGNITION)
+        // ===================================================================================
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("عذراً، متصفحك لا يدعم التعرف على الصوت.");
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ar-SA';
+        recognition.continuous = false;
+
+        visualAssistant.addEventListener('click', () => {
+            recognition.start();
+        });
+
+        recognition.onstart = () => {
+            visualAssistant.classList.add('listening');
+            statusText.textContent = '... أستمع الآن';
+        };
+
+        recognition.onend = () => {
+            visualAssistant.classList.remove('listening');
+            statusText.textContent = 'اضغط للتحدث';
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech recognition error:", event.error);
+            statusText.textContent = 'حدث خطأ';
+        };
+
+        recognition.onresult = (event) => {
+            const command = event.results[0][0].transcript.trim();
+            handleCommand(command);
+        };
+
+        // ===================================================================================
+        // PART 5: COMMAND HANDLING
+        // ===================================================================================
+        function handleCommand(command) {
+            if (command.startsWith('ابحث عن')) {
+                const query = command.substring('ابحث عن'.length).trim();
+                if (query) {
+                    speak(`جاري البحث عن ${query}`);
+                    searchGoogle(query);
+                } else {
+                    speak("لم أفهم ما الذي تبحث عنه.");
+                }
+            } else if (command.startsWith('افتح أول موقع') || command.startsWith('افتح الموقع الأول')) {
+                openLink(0);
+            } else if (command.startsWith('افتح ثاني موقع') || command.startsWith('افتح الموقع الثاني')) {
+                openLink(1);
+            } else if (command.startsWith('افتح ثالث موقع') || command.startsWith('افتح الموقع الثالث')) {
+                openLink(2);
+            } else {
+                speak("لم أفهم الأمر. يرجى المحاولة مرة أخرى.");
+            }
+        }
+
+        function openLink(index) {
+            if (searchResults && searchResults.length > index) {
+                speak(`جاري فتح الموقع رقم ${index + 1}`);
+                window.open(searchResults[index].link, '_blank');
+            } else {
+                speak("لا توجد نتائج لفتحها.");
+            }
+        }
+
+        // ===================================================================================
+        // PART 6: GOOGLE CUSTOM SEARCH API INTEGRATION
+        // ===================================================================================
+        async function searchGoogle(query) {
+            
+            // تم وضع المفاتيح التي أدخلتها هنا
+            const API_KEY = 'AIzaSyD1w_DtZ0TyVUOS1LaHDzFD5gYDdXGzxYo';
+            const CX = '750783450e9234b15';
+            
+            const url = `https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${CX}&q=${encodeURIComponent(query)}`;
+            
+            statusText.textContent = '... جاري البحث';
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                displayResults(data.items);
+            } catch (error) {
+                console.error("Error fetching search results:", error);
+                speak("حدث خطأ أثناء البحث. يرجى التحقق من مفتاح API أو اتصالك بالإنترنت.");
+                statusText.textContent = 'خطأ في البحث';
+            }
+        }
+
+        // ===================================================================================
+        // PART 7: DISPLAYING RESULTS
+        // ===================================================================================
+        function displayResults(items) {
+            resultsContainer.innerHTML = ''; 
+            if (!items || items.length === 0) {
+                resultsContainer.innerHTML = '<p class="text-center col-span-full">لا توجد نتائج.</p>';
+                speak("لم أجد أي نتائج.");
+                return;
+            }
+            
+            searchResults = items;
+            
+            items.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <h3 class="text-xl font-bold text-cyan-300 font-orbitron mb-2">${index + 1}. ${item.title}</h3>
+                    <p class="text-gray-300 mb-4">${item.snippet}</p>
+                    <a href="${item.link}" target="_blank" class="text-cyan-500 hover:underline">زيارة الموقع</a>
+                `;
+                resultsContainer.appendChild(card);
+            });
+
+            speak(`تم العثور على ${items.length} من النتائج.`);
+        }
+
+    </script>
+</body>
+</html>
